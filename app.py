@@ -14,9 +14,9 @@ def main():
     csvlist = []
     input_file = sys.argv[1]
     with open(input_file, "r") as file:
-        for url in file:
+        for counter, url in enumerate(file, start=1):
             page = urlopen(url)
-
+            
             html_bytes = page.read()
             html = html_bytes.decode("utf-8")
 
@@ -26,6 +26,7 @@ def main():
             title = html[start:end]
             print(title)
             record = {
+                '№': counter,
                 'original url': url,
                 'title': title
             }
@@ -36,15 +37,13 @@ def main():
     # output_file = input_file.split('.')[0] + '.csv'
     output_file = ".data/result.csv"
     print(output_file)
-    fieldnames = ['original url', 'title']
+    fieldnames = ['№', 'original url', 'title']
     with open(output_file, "w", newline='') as csvfile:
         # TODO write lines from csvlist using DictWriter
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
         writer.writeheader()
         for row in csvlist:
             writer.writerow(row)
-
-        pass
 
 
 if __name__ == '__main__':
