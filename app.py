@@ -41,9 +41,9 @@ def main():
             if not phones:
                 # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
                 pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
-
                 for found in re.finditer(pattern, html):
-                    phone = found.group()
+                    phone = found.group().strip()
+                    phone = re.sub("-| |\(|\)", "", phone)
                     if not phone in phones:
                         phones.append(phone)
 
