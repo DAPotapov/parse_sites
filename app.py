@@ -33,13 +33,9 @@ def main():
 
             csvlist.append(record)
 
-    # TODO parse file name from path and replace extension with csv
-    # output_file = input_file.split('.')[0] + '.csv'
-    output_file = ".data/result.csv"
-    print(output_file)
+    output_file = input_file.rsplit('.',1)[0] + '.csv'
     fieldnames = ['№', 'original url', 'title']
     with open(output_file, "w", newline='') as csvfile:
-        # TODO write lines from csvlist using DictWriter
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
         writer.writeheader()
         for row in csvlist:
