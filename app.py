@@ -29,27 +29,52 @@ def main():
             print(title)
 
             # Find phone
-            # start = html.find("\"tel:") + len("\"tel:")
-            # end = html.find("\"")
             start = 0
             pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
             phones = []
+            # TODO better use finditer()
+            for found in re.finditer(pattern, html):
+                phone = found.group()[5:-1]
+                if not phone in phones:
+                    phones.append(phone)
+
+            # while start < len(html):
+            #     found = pattern.search(html, pos=start)
+            #     if found:
+            #         start = found.end()
+            #         phone = found.group()[5:-1]
+            #         # TODO take in acount that numbers starting with 7 or 8 are the same
+            #         if not phone in phones:
+            #             phones.append(phone)
+
+            #     # Stop searching if nothing in the end of page
+            #     else:
+            #         break
+
+            # Try different method if 'tel:' doesn't work
+            if not phones:
+
+                pass
+
+            # Find e-mail
+            start = 0
+            pattern = re.compile(r"mailto:")
+            emails = []
             while start < len(html):
                 found = pattern.search(html, pos=start)
                 if found:
                     start = found.end()
-                    phone = found.group()[5:-1]
-                    # TODO take in acount that numbers starting with 7 or 8 are the same
-                    if not phone in phones:
-                        phones.append(phone)
+                    ending_pattern = re.compile(r"\"|\'")
+                    ending_found = ending_pattern.search(html, pos=start)
+                    if ending_found:
+                        email = html[start:ending_found.start()].strip()
+                        start = ending_found.start()
+                        if not email in emails:
+                            emails.append(email)
 
                 # Stop searching if nothing in the end of page
                 else:
                     break
-
-            # Try different method if 'tel:' doesn't work
-            if not phones:
-                pass
 
             # Write to row
             record = {
@@ -57,7 +82,7 @@ def main():
                 'original url': url,
                 'title': title,
                 'phone': ', '.join(phones),
-                'e-mail':''
+                'e-mail': ', '.join(emails)
             }
 
             # Add row of gathered information to list
