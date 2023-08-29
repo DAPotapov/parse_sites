@@ -1,3 +1,5 @@
+#!.venv/bin/python
+
 import csv
 # import os
 import sys
@@ -29,7 +31,6 @@ def main():
             print(title)
 
             # Find phone
-            start = 0
             pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
             phones = []
             for found in re.finditer(pattern, html):
@@ -48,24 +49,15 @@ def main():
                         phones.append(phone)
 
             # Find e-mail
-            start = 0
             pattern = re.compile(r"mailto:")
             emails = []
-            while start < len(html):
-                found = pattern.search(html, pos=start)
-                if found:
-                    start = found.end()
-                    ending_pattern = re.compile(r"\"|\'")
-                    ending_found = ending_pattern.search(html, pos=start)
-                    if ending_found:
-                        email = html[start:ending_found.start()].strip()
-                        start = ending_found.start()
-                        if not email in emails:
-                            emails.append(email)
-
-                # Stop searching if nothing in the end of page
-                else:
-                    break
+            for found in re.finditer(pattern, html):
+                ending_pattern = re.compile(r"\"|\'")
+                ending_found = ending_pattern.search(html, pos=found.end())
+                if ending_found:
+                    email = html[found.end():ending_found.start()].strip()
+                    if not email in emails:
+                        emails.append(email)
 
             # Write to row
             record = {
