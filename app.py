@@ -25,7 +25,7 @@ def main():
             # Find title
             start = html.find("<title>") + len("<title>")
             end = html.find("</title>")
-            title = html[start:end]
+            title = html[start:end].strip().replace("|", "-")
             print(title)
 
             # Find phone
@@ -47,12 +47,16 @@ def main():
                 else:
                     break
 
+            # Try different method if 'tel:' doesn't work
+            if not phones:
+                pass
+
             # Write to row
             record = {
                 '№': counter,
                 'original url': url,
                 'title': title,
-                'phone':phones,
+                'phone': ', '.join(phones),
                 'e-mail':''
             }
 
