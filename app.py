@@ -32,29 +32,20 @@ def main():
             start = 0
             pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
             phones = []
-            # TODO better use finditer()
             for found in re.finditer(pattern, html):
                 phone = found.group()[5:-1]
                 if not phone in phones:
                     phones.append(phone)
 
-            # while start < len(html):
-            #     found = pattern.search(html, pos=start)
-            #     if found:
-            #         start = found.end()
-            #         phone = found.group()[5:-1]
-            #         # TODO take in acount that numbers starting with 7 or 8 are the same
-            #         if not phone in phones:
-            #             phones.append(phone)
-
-            #     # Stop searching if nothing in the end of page
-            #     else:
-            #         break
-
             # Try different method if 'tel:' doesn't work
             if not phones:
+                # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
+                pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
 
-                pass
+                for found in re.finditer(pattern, html):
+                    phone = found.group()
+                    if not phone in phones:
+                        phones.append(phone)
 
             # Find e-mail
             start = 0
