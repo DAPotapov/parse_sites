@@ -58,6 +58,24 @@ def main():
                     email = html[found.end():ending_found.start()].strip()
                     if not email in emails:
                         emails.append(email)
+            
+            # Try alternative method to find emails on page
+            if not emails:
+                pattern = re.compile(r"")
+                for found in re.finditer(pattern, html):
+                    pass
+
+            # Look for  telegram link
+            pattern = re.compile(r"((t.me/)|(tlgg.ru/))[\w_]{5,32}")
+            telega = []
+            for found in re.finditer(pattern, html):
+                telega.append(found.group())
+
+            # Look for  whatsapp link
+            pattern = re.compile(r"((wa.me/)|(api.whatsapp.com/send\?phone=))\d{8,15}")
+            whatsapp = []
+            for found in re.finditer(pattern, html):
+                whatsapp.append(found.group())
 
             # Write to row
             record = {
@@ -65,7 +83,9 @@ def main():
                 'original url': url,
                 'title': title,
                 'phone': ', '.join(phones),
-                'e-mail': ', '.join(emails)
+                'e-mail': ', '.join(emails),
+                'telegram link': ', '.join(telega),
+                'whatsapp link': ', '.join(whatsapp)
             }
 
             # Add row of gathered information to list
@@ -73,7 +93,7 @@ def main():
 
     # Prepare file name to write into, open file and write row by row, starting with header
     output_file = input_file.rsplit('.',1)[0] + '.csv'
-    fieldnames = ['№', 'original url', 'title', 'phone', 'e-mail']
+    fieldnames = ['№', 'original url', 'title', 'phone', 'e-mail','telegram link','whatsapp link']
     with open(output_file, "w", newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
         writer.writeheader()
