@@ -61,21 +61,25 @@ def main():
             
             # Try alternative method to find emails on page
             if not emails:
-                pattern = re.compile(r"")
+                # Simplified regex for e-mail address, because its purpose not to validate, only find similar
+                pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
                 for found in re.finditer(pattern, html):
-                    pass
+                    if not found.group() in emails:
+                        emails.append(found.group())                    
 
             # Look for  telegram link
             pattern = re.compile(r"((t.me/)|(tlgg.ru/))[\w_]{5,32}")
             telega = []
             for found in re.finditer(pattern, html):
-                telega.append(found.group())
+                if not found.group() in telega:
+                    telega.append(found.group())
 
             # Look for  whatsapp link
             pattern = re.compile(r"((wa.me/)|(api.whatsapp.com/send\?phone=))\d{8,15}")
             whatsapp = []
             for found in re.finditer(pattern, html):
-                whatsapp.append(found.group())
+                if not found.group() in whatsapp:
+                    whatsapp.append(found.group())
 
             # Write to row
             record = {
