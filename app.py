@@ -4,9 +4,83 @@ import csv
 # import os
 import sys
 import re
+import urllib.request
+import urllib.error
 
 # from dotenv import load_dotenv
 from urllib.request import urlopen
+
+def get_phones(html) -> list:
+    phones = []
+    # Find phone
+    pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
+    for found in re.finditer(pattern, html):
+        phone = found.group()[5:-1]
+        if not phone in phones:
+            phones.append(phone)
+
+    # Try different method if 'tel:' doesn't work
+    if not phones:
+        # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
+        pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
+        for found in re.finditer(pattern, html):
+            phone = found.group().strip()
+            phone = re.sub("-| |\(|\)", "", phone)
+            if not phone in phones:
+                phones.append(phone)
+    return phones
+
+
+def get_emails(html) -> list:
+    # Find e-mail
+    pattern = re.compile(r"mailto:")
+    emails = []
+    for found in re.finditer(pattern, html):
+        ending_pattern = re.compile(r"\"|\'")
+        ending_found = ending_pattern.search(html, pos=found.end())
+        if ending_found:
+            email = html[found.end():ending_found.start()].strip()
+            if not email in emails:
+                emails.append(email)
+    
+    # Try alternative method to find emails on page
+    if not emails:
+        # Simplified regex for e-mail address, because its purpose not to validate, only find similar
+        pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
+        for found in re.finditer(pattern, html):
+            if not found.group() in emails:
+                emails.append(found.group())      
+    return emails
+
+def get_telegram_links(html) -> list:
+    # Look for  telegram link
+    pattern = re.compile(r"((t.me/)|(tlgg.ru/))[\w_]{5,32}")
+    telega = []
+    for found in re.finditer(pattern, html):
+        if not found.group() in telega:
+            telega.append(found.group())
+    return telega
+
+
+def get_whatsapp_links(html) -> list:
+    # Look for  whatsapp link
+    pattern = re.compile(r"((wa.me/)|(api.whatsapp.com/send\?phone=))\d{8,15}")
+    whatsapp = []
+    for found in re.finditer(pattern, html):
+        if not found.group() in whatsapp:
+            whatsapp.append(found.group())
+    return whatsapp
+
+
+def get_vkontakte_links(html) -> list:
+        # Look for Vkontakte link
+    pattern = re.compile(r"vk.com/\w{6,16}(\"|\')")
+    vkontakte = []
+    for found in re.finditer(pattern, html):
+        if not found.group()[:-1] in vkontakte:
+            vkontakte.append(found.group()[:-1])
+    return vkontakte
+
 
 def main():
 
@@ -16,92 +90,79 @@ def main():
 
     csvlist = []
     input_file = sys.argv[1]
+
+    # Just in case someone don't like crawlers pretend that it's browser
+    user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'
+    headers = {'User-Agent': user_agent}
+    
     with open(input_file, "r") as file:
         for counter, url in enumerate(file, start=1):
-
-            # Get page
-            page = urlopen(url)            
-            html_bytes = page.read()
-            html = html_bytes.decode("utf-8")
-
-            # Find title
-            start = html.find("<title>") + len("<title>")
-            end = html.find("</title>")
-            title = html[start:end].strip().replace("|", "-")
-            print(title)
-
-            # Find phone
-            pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
-            phones = []
-            for found in re.finditer(pattern, html):
-                phone = found.group()[5:-1]
-                if not phone in phones:
-                    phones.append(phone)
-
-            # Try different method if 'tel:' doesn't work
-            if not phones:
-                # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
-                pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
-                for found in re.finditer(pattern, html):
-                    phone = found.group().strip()
-                    phone = re.sub("-| |\(|\)", "", phone)
-                    if not phone in phones:
-                        phones.append(phone)
-
-            # Find e-mail
-            pattern = re.compile(r"mailto:")
-            emails = []
-            for found in re.finditer(pattern, html):
-                ending_pattern = re.compile(r"\"|\'")
-                ending_found = ending_pattern.search(html, pos=found.end())
-                if ending_found:
-                    email = html[found.end():ending_found.start()].strip()
-                    if not email in emails:
-                        emails.append(email)
+            req = urllib.request.Request(url, headers=headers)
             
-            # Try alternative method to find emails on page
-            if not emails:
-                # Simplified regex for e-mail address, because its purpose not to validate, only find similar
-                pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
-                for found in re.finditer(pattern, html):
-                    if not found.group() in emails:
-                        emails.append(found.group())                    
+            # Get page
+            try:
+                with urllib.request.urlopen(req) as response:
+                    html = response.read().decode("utf-8")
+            except urllib.error.HTTPError as e:
+                print(f"Error while parsing '{url}': \n{e}")
+            else:
 
-            # Look for  telegram link
-            pattern = re.compile(r"((t.me/)|(tlgg.ru/))[\w_]{5,32}")
-            telega = []
-            for found in re.finditer(pattern, html):
-                if not found.group() in telega:
-                    telega.append(found.group())
+                # Find title
+                start = html.find("<title>") + len("<title>")
+                end = html.find("</title>")
+                title = html[start:end].strip().replace("|", "-")
+                # print(title)
 
-            # Look for  whatsapp link
-            pattern = re.compile(r"((wa.me/)|(api.whatsapp.com/send\?phone=))\d{8,15}")
-            whatsapp = []
-            for found in re.finditer(pattern, html):
-                if not found.group() in whatsapp:
-                    whatsapp.append(found.group())
+                # Get information
+                phones = get_phones(html)
+                emails = get_emails(html)
+                telega = get_telegram_links(html)  
+                whatsapp = get_whatsapp_links(html)
+                vkontakte = get_vkontakte_links(html)
+                
+                # If not full information gathered try look up at Contacts page
+                if not phones or not emails or not telega or not whatsapp or not vkontakte:
+                    # try to get Contacts page
+                    new_pattern = re.compile(r"((http://)|(https://))?[\w.-]{4,253}\/")
+                    found = new_pattern.search(url)
+                    if found:
+                        contacts_url = found.group() + 'contacts'
 
-            # Look for Vkontakte link
-            pattern = re.compile(r"vk.com/\w{6,16}(\"|\')")
-            vkontakte = []
-            for found in re.finditer(pattern, html):
-                if not found.group()[:-1] in vkontakte:
-                    vkontakte.append(found.group()[:-1])
+                        # Get Contacts page contents
+                        new_req = urllib.request.Request(contacts_url, headers=headers)
+                        try:
+                            with urllib.request.urlopen(new_req) as new_response:
+                                contacts_page = new_response.read().decode("utf-8")
 
-            # Write to row
-            record = {
-                '№': counter,
-                'original url': url,
-                'title': title,
-                'phone': ', '.join(phones),
-                'e-mail': ', '.join(emails),
-                'telegram link': ', '.join(telega),
-                'whatsapp link': ', '.join(whatsapp),
-                'vkontakte link': ', '.join(vkontakte)
-            }
+                        except urllib.error.HTTPError as e:
+                            print(f"Error while parsing '{contacts_url}': \n{e}")
+                        else:
+                            # Try to fill gaps
+                            if not phones:
+                                phones = get_phones(contacts_page)
+                            if not emails:
+                                emails = get_emails(contacts_page)
+                            if not telega:
+                                telega = get_telegram_links(contacts_page)
+                            if not whatsapp:
+                                whatsapp = get_whatsapp_links(contacts_page)
+                            if not vkontakte:
+                                vkontakte = get_vkontakte_links(contacts_page)                        
+                            
+                # Construct a row with gathered information
+                record = {
+                    '№': counter,
+                    'original url': url,
+                    'title': title,
+                    'phone': ', '.join(phones),
+                    'e-mail': ', '.join(emails),
+                    'telegram link': ', '.join(telega),
+                    'whatsapp link': ', '.join(whatsapp),
+                    'vkontakte link': ', '.join(vkontakte)
+                }
 
-            # Add row of gathered information to list
-            csvlist.append(record)
+                # Add row of gathered information to list
+                csvlist.append(record)
 
     # Prepare file name to write into, open file and write row by row, starting with header
     output_file = input_file.rsplit('.',1)[0] + '.csv'
