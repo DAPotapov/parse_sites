@@ -60,7 +60,10 @@ def get_emails(html) -> list:
         pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,15}@[\w-]{1,15}\.[a-zA-Z]{2,3}")       
         for found in re.finditer(pattern, html):
             if not found.group() in emails:
-                if not 'Rating@Mail.ru'.lower() in found.group().lower():
+                candidate = found.group().lower()
+                # Don't include mail.ru nonsense
+                if (not 'Rating@Mail.ru'.lower() in candidate and
+                    not 'Рейтинг@Mail.ru'.lower() in candidate):
                     emails.append(found.group().lower())      
     return emails
 
