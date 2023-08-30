@@ -46,17 +46,22 @@ def get_emails(html) -> list:
         ending_pattern = re.compile(r"\"|\'")
         ending_found = ending_pattern.search(html, pos=found.end())
         if ending_found:
-            email = html[found.end():ending_found.start()].strip()
+            email = html[found.end():ending_found.start()].strip().lower()
             if not email in emails:
                 emails.append(email)
     
     # Try alternative method to find emails on page
     if not emails:
         # Simplified regex for e-mail address, because its purpose not to validate, only find similar
-        pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
+        # pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
+        # Let's be reasonable: noone will use full-length e-mail addres for contact on commercial website
+        # So let's limit to 15 characters - that's more than enough, 
+        # Even special chars not really need to be here in such case
+        pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,15}@[\w-]{1,15}\.[a-zA-Z]{2,3}")       
         for found in re.finditer(pattern, html):
             if not found.group() in emails:
-                emails.append(found.group())      
+                if not 'Rating@Mail.ru'.lower() in found.group().lower():
+                    emails.append(found.group().lower())      
     return emails
 
 def get_telegram_links(html) -> list:
