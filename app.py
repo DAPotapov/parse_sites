@@ -81,6 +81,13 @@ def main():
                 if not found.group() in whatsapp:
                     whatsapp.append(found.group())
 
+            # Look for Vkontakte link
+            pattern = re.compile(r"vk.com/\w{6,16}(\"|\')")
+            vkontakte = []
+            for found in re.finditer(pattern, html):
+                if not found.group()[:-1] in vkontakte:
+                    vkontakte.append(found.group()[:-1])
+
             # Write to row
             record = {
                 '№': counter,
@@ -89,7 +96,8 @@ def main():
                 'phone': ', '.join(phones),
                 'e-mail': ', '.join(emails),
                 'telegram link': ', '.join(telega),
-                'whatsapp link': ', '.join(whatsapp)
+                'whatsapp link': ', '.join(whatsapp),
+                'vkontakte link': ', '.join(vkontakte)
             }
 
             # Add row of gathered information to list
@@ -97,7 +105,7 @@ def main():
 
     # Prepare file name to write into, open file and write row by row, starting with header
     output_file = input_file.rsplit('.',1)[0] + '.csv'
-    fieldnames = ['№', 'original url', 'title', 'phone', 'e-mail','telegram link','whatsapp link']
+    fieldnames = ['№', 'original url', 'title', 'phone', 'e-mail','telegram link','whatsapp link', 'vkontakte link']
     with open(output_file, "w", newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
         writer.writeheader()
