@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def get_phones(html) -> list:
     phones = []
     # Find phone
-    pattern = re.compile(r"\"tel:\+?\d{6,11}\"")
+    pattern = re.compile(r"\"tel:\+?[\d ()-]{6,11}\"")
     for found in re.finditer(pattern, html):
         phone = found.group()[5:-1]
         if not phone in phones:
@@ -29,9 +29,10 @@ def get_phones(html) -> list:
         # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
         # pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
         # But because we are focused on Russia now, let's continue with line below
-        pattern = re.compile(r"\+?(7|8)\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{5,7}")
+        # And in this case focus on text between tags
+        pattern = re.compile(r"<.*?>\+?(7|8)\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{5,7}<.*?>")
         for found in re.finditer(pattern, html):
-            phone = found.group().strip()
+            phone = re.sub("<.*?>", "", found.group()).strip()
             phone = re.sub("-| |\(|\)", "", phone)
             if not phone in phones:
                 phones.append(phone)
@@ -40,7 +41,7 @@ def get_phones(html) -> list:
 
 def get_emails(html) -> list:
     # Find e-mail
-    pattern = re.compile(r"mailto:")
+    pattern = re.compile(r"mailto:", re.IGNORECASE)
     emails = []
     for found in re.finditer(pattern, html):
         ending_pattern = re.compile(r"\"|\'")
@@ -55,21 +56,23 @@ def get_emails(html) -> list:
         # Simplified regex for e-mail address, because its purpose not to validate, only find similar
         # pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
         # Let's be reasonable: noone will use full-length e-mail addres for contact on commercial website
-        # So let's limit to 15 characters - that's more than enough, 
+        # So let's limit to 20 characters - that's more than enough, 
         # Even special chars not really need to be here in such case
-        pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,15}@[\w-]{1,15}\.[a-zA-Z]{2,3}")       
+        # And since address like text is present in some attributes, let's look only between tags
+        pattern = re.compile(r"<.*?>[-_\.\w]{1,20}@[\w-]{1,20}\.[a-zA-Z]{2,3}<.*?>", re.IGNORECASE)       
         for found in re.finditer(pattern, html):
-            if not found.group() in emails:
-                candidate = found.group().lower()
+            # Throw away tags surrounding email address
+            email = re.sub("<.*?>", "", found.group().lower())
+            if not email in emails:
                 # Don't include mail.ru nonsense
-                if (not 'Rating@Mail.ru'.lower() in candidate and
-                    not 'Рейтинг@Mail.ru'.lower() in candidate):
-                    emails.append(found.group().lower())      
+                if (not 'Rating@Mail.ru'.lower() in email and
+                    not 'Рейтинг@Mail.ru'.lower() in email):
+                    emails.append(email)      
     return emails
 
 def get_telegram_links(html) -> list:
     # Look for  telegram link
-    pattern = re.compile(r"((t.me/)|(tlgg.ru/))[\w_]{5,32}")
+    pattern = re.compile(r"((t\.me/)|(tlgg\.ru/))[\w_]{5,32}")
     telega = []
     for found in re.finditer(pattern, html):
         if not found.group() in telega:
@@ -79,7 +82,7 @@ def get_telegram_links(html) -> list:
 
 def get_whatsapp_links(html) -> list:
     # Look for  whatsapp link
-    pattern = re.compile(r"((wa.me/)|(api.whatsapp.com/send\?phone=))\d{8,15}")
+    pattern = re.compile(r"((wa\.me/)|(api\.whatsapp\.com/send\?phone=))\d{8,15}", re.IGNORECASE)
     whatsapp = []
     for found in re.finditer(pattern, html):
         if not found.group() in whatsapp:
@@ -89,7 +92,7 @@ def get_whatsapp_links(html) -> list:
 
 def get_vkontakte_links(html) -> list:
         # Look for Vkontakte link
-    pattern = re.compile(r"vk.com/\w{6,16}(\"|\')")
+    pattern = re.compile(r"vk.com/\w{6,16}(\"|\')", re.IGNORECASE)
     vkontakte = []
     for found in re.finditer(pattern, html):
         if not found.group()[:-1] in vkontakte:
@@ -112,6 +115,9 @@ def main():
     
     with open(input_file, "r") as file:
         for counter, url in enumerate(file, start=1):
+            # Be safe if there is empty string in file
+            if not url or re.match("^\s*$", url):
+                continue
             req = urllib.request.Request(url, headers=headers)
             
             # Get page
@@ -122,13 +128,20 @@ def main():
                 logger.error(f"Error while parsing '{url}': \n{e}")
             except UnicodeDecodeError as e:
                 logger.error(f"Error while parsing '{url}': \n{e}")
+            except ValueError as e:
+                logger.error(f"Error while parsing '{url}': \n{e}")
             else:
 
                 # Find title
-                start = html.find("<title>") + len("<title>")
-                end = html.find("</title>")
-                title = html[start:end].strip().replace("|", "-")
-                # print(title)
+                # start = html.find("<title>") + len("<title>")
+                # end = html.find("</title>")
+                # title = html[start:end].strip().replace("|", "-")
+                pattern = "<title.*?>.*?</title.*?>"
+                found = re.search(pattern, html, re.IGNORECASE)
+                if found:
+                    title = re.sub("<.*?>", "", found.group())
+                else:
+                    title = ''
 
                 # Get information
                 phones = get_phones(html)
@@ -154,7 +167,9 @@ def main():
                         except urllib.error.HTTPError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except UnicodeDecodeError as e:
-                            logger.error(f"Error while parsing '{url}': \n{e}")
+                            logger.error(f"Error while parsing '{contacts_url}': \n{e}")
+                        except ValueError as e:
+                            logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         else:
                             # Try to fill gaps
                             if not phones:
