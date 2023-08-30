@@ -2,13 +2,18 @@
 
 import csv
 # import os
-import sys
+import logging
 import re
+import sys
 import urllib.request
 import urllib.error
 
 # from dotenv import load_dotenv
 from urllib.request import urlopen
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_phones(html) -> list:
     phones = []
@@ -19,10 +24,12 @@ def get_phones(html) -> list:
         if not phone in phones:
             phones.append(phone)
 
-    # Try different method if 'tel:' doesn't work
+    # Try different method if 'tel:' was not 
     if not phones:
         # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
-        pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
+        # pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
+        # But because we are focused on Russia now, let's continue with line below
+        pattern = re.compile(r"\+?(7|8)\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{5,7}")
         for found in re.finditer(pattern, html):
             phone = found.group().strip()
             phone = re.sub("-| |\(|\)", "", phone)
@@ -104,7 +111,9 @@ def main():
                 with urllib.request.urlopen(req) as response:
                     html = response.read().decode("utf-8")
             except urllib.error.HTTPError as e:
-                print(f"Error while parsing '{url}': \n{e}")
+                logger.error(f"Error while parsing '{url}': \n{e}")
+            except UnicodeDecodeError as e:
+                logger.error(f"Error while parsing '{url}': \n{e}")
             else:
 
                 # Find title
@@ -135,7 +144,9 @@ def main():
                                 contacts_page = new_response.read().decode("utf-8")
 
                         except urllib.error.HTTPError as e:
-                            print(f"Error while parsing '{contacts_url}': \n{e}")
+                            logger.error(f"Error while parsing '{contacts_url}': \n{e}")
+                        except UnicodeDecodeError as e:
+                            logger.error(f"Error while parsing '{url}': \n{e}")
                         else:
                             # Try to fill gaps
                             if not phones:
