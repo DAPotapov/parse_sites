@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 def get_phones(html) -> list:
     phones = []
     # Find phone
-    pattern = re.compile(r"\"tel:\+?[\d ()-]{6,11}\"")
+    pattern = re.compile(r"tel:\+?[\d ()-]{6,17}(\"|\'|\\)")
     for found in re.finditer(pattern, html):
-        phone = found.group()[5:-1]
+        phone = found.group()[4:-1]
+        phone = re.sub("-| |\(|\)", "", phone)
         if not phone in phones:
             phones.append(phone)
 
@@ -44,7 +45,8 @@ def get_emails(html) -> list:
     pattern = re.compile(r"mailto:", re.IGNORECASE)
     emails = []
     for found in re.finditer(pattern, html):
-        ending_pattern = re.compile(r"\"|\'")
+        # If pattern is found within JS code it can ends with escape characters
+        ending_pattern = re.compile(r"\"|\'|\\\\?")
         ending_found = ending_pattern.search(html, pos=found.end())
         if ending_found:
             email = html[found.end():ending_found.start()].strip().lower()
