@@ -12,7 +12,10 @@ import urllib.error
 from urllib.request import urlopen
 
 # Configure logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(filename=".data/scraper.log", 
+                    filemode='a', 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def get_phones(html) -> list:
@@ -134,8 +137,10 @@ def main():
             try:
                 with urllib.request.urlopen(req) as response:
                     html = response.read().decode("utf-8")
-            except urllib.error.HTTPError as e:
+            except urllib.error.URLError as e:
                 logger.error(f"Error while parsing '{url}': \n{e}")
+            # except urllib.error.HTTPError as e:
+            #     logger.error(f"Error while parsing '{url}': \n{e}")
             except UnicodeDecodeError as e:
                 logger.error(f"Error while parsing '{url}': \n{e}")
             except ValueError as e:
@@ -144,9 +149,9 @@ def main():
 
                 # Find title
                 pattern = "<title.*?>.*?</title.*?>"
-                found = re.search(pattern, html, re.IGNORECASE)
+                found = re.search(pattern, html, flags=re.IGNORECASE | re.DOTALL)
                 if found:
-                    title = re.sub("<.*?>", "", found.group())
+                    title = re.sub("<.*?>", "", found.group()).strip()
                 else:
                     title = ''
                 
@@ -175,8 +180,10 @@ def main():
                             with urllib.request.urlopen(new_req) as new_response:
                                 contacts_page = new_response.read().decode("utf-8")
 
-                        except urllib.error.HTTPError as e:
+                        except urllib.error.URLError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
+                        # except urllib.error.HTTPError as e:
+                        #     logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except UnicodeDecodeError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except ValueError as e:
@@ -192,7 +199,12 @@ def main():
                             if not whatsapp:
                                 whatsapp = get_whatsapp_links(contacts_page)
                             if not vkontakte:
-                                vkontakte = get_vkontakte_links(contacts_page)                        
+                                vkontakte = get_vkontakte_links(contacts_page)   
+
+                        logger.info(f"Where am I? {contacts_url}") 
+                else:
+                    logger.info(f"Where am I? {url}")                           
+
                             
                 # Construct a row with gathered information
                 record = {
