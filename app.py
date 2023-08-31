@@ -41,15 +41,22 @@ def get_phones(html) -> list:
 
 
 def get_emails(html) -> list:
-    # Find e-mail
+    # Look up for e-mail
     pattern = re.compile(r"mailto:", re.IGNORECASE)
     emails = []
     for found in re.finditer(pattern, html):
+
         # If pattern is found within JS code it can ends with escape characters
         ending_pattern = re.compile(r"\"|\'|\\\\?")
         ending_found = ending_pattern.search(html, pos=found.end())
         if ending_found:
             email = html[found.end():ending_found.start()].strip().lower()
+
+            # Just in case something went wrong limit length of the title
+            if len(email) > 256:
+                email = email[:255]
+            
+            # Add address if new one
             if not email in emails:
                 emails.append(email)
     
@@ -71,6 +78,7 @@ def get_emails(html) -> list:
                     not 'Рейтинг@Mail.ru'.lower() in email):
                     emails.append(email)      
     return emails
+
 
 def get_telegram_links(html) -> list:
     # Look for  telegram link
@@ -135,15 +143,16 @@ def main():
             else:
 
                 # Find title
-                # start = html.find("<title>") + len("<title>")
-                # end = html.find("</title>")
-                # title = html[start:end].strip().replace("|", "-")
                 pattern = "<title.*?>.*?</title.*?>"
                 found = re.search(pattern, html, re.IGNORECASE)
                 if found:
                     title = re.sub("<.*?>", "", found.group())
                 else:
                     title = ''
+                
+                # Just in case something went wrong limit length of the title
+                if len(title) > 256:
+                    title = title[:255]
 
                 # Get information
                 phones = get_phones(html)
