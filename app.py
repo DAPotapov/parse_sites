@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def get_phones(html) -> list:
     phones = []
     # Find phone
-    pattern = re.compile(r"tel:\+?[\d ()-]{6,17}(\"|\'|\\)")
+    pattern = re.compile(r"tel:\+?[\d ()-]{6,17}(\"|\'|\\\\)")
     for found in re.finditer(pattern, html):
         phone = found.group()[4:-1]
         phone = re.sub("-| |\(|\)", "", phone)
@@ -34,7 +34,7 @@ def get_phones(html) -> list:
         # pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
         # But because we are focused on Russia now, let's continue with line below
         # And in this case focus on text between tags
-        pattern = re.compile(r"<.*?>\+?(7|8)\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{5,7}<.*?>")
+        pattern = re.compile(r"<.*?>\+?(7|8)\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{5,13}<.*?>")
         for found in re.finditer(pattern, html):
             phone = re.sub("<.*?>", "", found.group()).strip()
             phone = re.sub("-| |\(|\)", "", phone)
@@ -71,10 +71,10 @@ def get_emails(html) -> list:
         # So let's limit to 20 characters - that's more than enough, 
         # Even special chars not really need to be here in such case
         # And since address like text is present in some attributes, let's look only between tags
-        pattern = re.compile(r"<.*?>[-_\.\w]{1,20}@[\w-]{1,20}\.[a-zA-Z]{2,3}<.*?>", re.IGNORECASE)       
+        pattern = re.compile(r"<.*?>[-_\.\w]{1,20}@[\w-]{1,20}\.[a-zA-Z]{2,3}<.*?>", flags=re.IGNORECASE | re.DOTALL)       
         for found in re.finditer(pattern, html):
             # Throw away tags surrounding email address
-            email = re.sub("<.*?>", "", found.group().lower())
+            email = re.sub("<.*?>", "", found.group().lower()).strip()
             if not email in emails:
                 # Don't include mail.ru nonsense
                 if (not 'Rating@Mail.ru'.lower() in email and
