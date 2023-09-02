@@ -34,10 +34,11 @@ def get_phones(html) -> list:
         # pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
         # But because we are focused on Russia now, let's continue with line below
         # And in this case focus on text between tags
-        pattern = re.compile(r"<.*?>\+?(7|8)\s?\-?\(?\d{3,4}\)?\s?\-?[\d\s\-]{5,13}<.*?>")
+        # pattern = re.compile(r"<.*?>\+?(7|8)\s?\-?\(?\d{3,4}\)?\s?\-?[\d\s\-]{5,13}<.*?>")
+        
+        pattern = re.compile(r">\+?(7|8)\s?\-?\(?\d{3,4}\)?\s?\-?[\d\s\-]{5,13}<")
         for found in re.finditer(pattern, html):
-            phone = re.sub("<.*?>", "", found.group()).strip()
-            phone = re.sub("-| |\(|\)", "", phone)
+            phone = re.sub("<|>|-| |\(|\)", "", found.group()).strip()
             if not phone in phones:
                 phones.append(phone)
     return phones
@@ -74,10 +75,11 @@ def get_emails(html) -> list:
         # So let's limit to 20 characters - that's more than enough, 
         # Even special chars not really need to be here in such case
         # And since address like text is present in some attributes, let's look only between tags
-        pattern = re.compile(r"<.*?>[\-_\.\w]{1,20}@[\w\-]{1,20}\.[a-z]{2,3}<.*?>", flags=re.IGNORECASE)       
+        # pattern = re.compile(r"<.*?>[\-_\.\w]{1,20}@[\w\-]{1,20}\.[a-z]{2,3}<.*?>", flags=re.IGNORECASE)       
+        pattern = re.compile(r">[\-_\.\w]{1,20}@[\w\-]{1,20}\.[a-z]{2,3}<", flags=re.IGNORECASE)       
         for found in re.finditer(pattern, html):
             # Throw away tags surrounding email address
-            email = re.sub("<.*?>", "", found.group().lower()).strip()
+            email = re.sub("<|>", "", found.group().lower()).strip()
             if not email in emails:
                 # Don't include mail.ru nonsense
                 if (not 'Rating@Mail.ru'.lower() in email and
@@ -98,17 +100,18 @@ def get_telegram_links(html) -> list:
 
 def get_whatsapp_links(html) -> list:
     # Look for  whatsapp link
-    pattern = re.compile(r"((wa\.me/)|(api\.whatsapp\.com/send\?phone=))\d{8,15}", re.IGNORECASE)
+    pattern = re.compile(r"((wa\.me/)|(api\.whatsapp\.com/send\?phone=)|(wa\.clck\.bar/))\d{8,15}", re.IGNORECASE)
     whatsapp = []
     for found in re.finditer(pattern, html):
         if not found.group() in whatsapp:
             whatsapp.append(found.group())
+
     return whatsapp
 
 
 def get_vkontakte_links(html) -> list:
         # Look for Vkontakte link
-    pattern = re.compile(r"vk.com/\w{6,16}(\"|\')", re.IGNORECASE)
+    pattern = re.compile(r"vk.com/\w{6,20}(\"|\')", re.IGNORECASE)
     vkontakte = []
     for found in re.finditer(pattern, html):
         if not found.group()[:-1] in vkontakte:
