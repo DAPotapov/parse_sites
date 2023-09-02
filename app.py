@@ -1,15 +1,11 @@
 #!.venv/bin/python
 
 import csv
-# import os
 import logging
 import re
 import sys
 import urllib.request
 import urllib.error
-
-# from dotenv import load_dotenv
-from urllib.request import urlopen
 
 # Configure logging
 logging.basicConfig(filename=".data/scraper.log", 
@@ -18,8 +14,10 @@ logging.basicConfig(filename=".data/scraper.log",
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def get_phones(html) -> list:
     phones = []
+
     # Find phone
     pattern = re.compile(r"tel:\+?[\d ()\-]{6,17}(\"|\'|\\\\)")
     for found in re.finditer(pattern, html):
@@ -30,12 +28,11 @@ def get_phones(html) -> list:
 
     # Try different method if 'tel:' was not 
     if not phones:
+        
         # Tricky part, because I can't guess how webmaster write a phone number (how many digits and spaces)
         # pattern = re.compile(r"\+?\d\s?-?\(?\d{3,4}\)?\s?-?[\d\s-]{6,12}")
         # But because we are focused on Russia now, let's continue with line below
         # And in this case focus on text between tags
-        # pattern = re.compile(r"<.*?>\+?(7|8)\s?\-?\(?\d{3,4}\)?\s?\-?[\d\s\-]{5,13}<.*?>")
-        
         pattern = re.compile(r">\+?(7|8)\s?\-?\(?\d{3,4}\)?\s?\-?[\d\s\-]{5,13}<")
         for found in re.finditer(pattern, html):
             phone = re.sub("<|>|-| |\(|\)", "", found.group()).strip()
@@ -52,35 +49,23 @@ def get_emails(html) -> list:
         email = re.sub("mailto:", "", found.group().lower()).strip()
         if not email in emails:
             emails.append(email)
-
-        # If pattern is found within JS code it can ends with escape characters
-        # ending_pattern = re.compile(r"\"|\'|\\\\")
-        # ending_found = ending_pattern.search(html, pos=found.end())
-        # if ending_found:
-        #     email = html[found.end():ending_found.start()].strip().lower()
-
-            # Just in case something went wrong limit length of the title
-            # if len(email) > 256:
-            #     email = email[:255]
-            
-            # # Add address if new one
-            # if not email in emails:
-            #     emails.append(email)
     
     # Try alternative method to find emails on page
     if not emails:
+
         # Simplified regex for e-mail address, because its purpose not to validate, only find similar
         # pattern = re.compile(r"[!#$%&'*+-/=?^_`{|}~\w]{1,64}@[\w-]{1,63}\.[a-zA-Z]{2,3}")
         # Let's be reasonable: noone will use full-length e-mail addres for contact on commercial website
         # So let's limit to 20 characters - that's more than enough, 
         # Even special chars not really need to be here in such case
         # And since address like text is present in some attributes, let's look only between tags
-        # pattern = re.compile(r"<.*?>[\-_\.\w]{1,20}@[\w\-]{1,20}\.[a-z]{2,3}<.*?>", flags=re.IGNORECASE)       
         pattern = re.compile(r">[\-_\.\w]{1,20}@[\w\-]{1,20}\.[a-z]{2,3}<", flags=re.IGNORECASE)       
         for found in re.finditer(pattern, html):
+
             # Throw away tags surrounding email address
             email = re.sub("<|>", "", found.group().lower()).strip()
             if not email in emails:
+
                 # Don't include mail.ru nonsense
                 if (not 'Rating@Mail.ru'.lower() in email and
                     not 'Рейтинг@Mail.ru'.lower() in email):
@@ -89,7 +74,7 @@ def get_emails(html) -> list:
 
 
 def get_telegram_links(html) -> list:
-    # Look for  telegram link
+    # Look for a telegram link
     pattern = re.compile(r"((t\.me/)|(tlgg\.ru/))[\w_]{5,32}")
     telega = []
     for found in re.finditer(pattern, html):
@@ -134,6 +119,7 @@ def main():
     
     with open(input_file, "r") as file:
         for counter, url in enumerate(file, start=1):
+
             # Be safe if there is empty string in file
             if not url or re.match("^\s*$", url):
                 continue
@@ -149,10 +135,10 @@ def main():
             try:
                 with urllib.request.urlopen(req) as response:
                     html = response.read().decode("utf-8")
+            except urllib.error.HTTPError as e:
+                logger.error(f"Error while parsing '{url}': \n{e}")
             except urllib.error.URLError as e:
                 logger.error(f"Error while parsing '{url}': \n{e}")
-            # except urllib.error.HTTPError as e:
-            #     logger.error(f"Error while parsing '{url}': \n{e}")
             except UnicodeDecodeError as e:
                 logger.error(f"Error while parsing '{url}': \n{e}")
             except ValueError as e:
@@ -180,6 +166,7 @@ def main():
                 
                 # If not full information gathered try look up at Contacts page
                 if not phones or not emails or not telega or not whatsapp or not vkontakte:
+
                     # try to get Contacts page
                     new_pattern = re.compile(r"((http://)|(https://))?[\w.-]{4,253}\/")
                     found = new_pattern.search(url)
@@ -191,16 +178,16 @@ def main():
                         try:
                             with urllib.request.urlopen(new_req) as new_response:
                                 contacts_page = new_response.read().decode("utf-8")
-
+                        except urllib.error.HTTPError as e:
+                            logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except urllib.error.URLError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
-                        # except urllib.error.HTTPError as e:
-                        #     logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except UnicodeDecodeError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         except ValueError as e:
                             logger.error(f"Error while parsing '{contacts_url}': \n{e}")
                         else:
+
                             # Try to fill gaps
                             if not phones:
                                 phones = get_phones(contacts_page)
